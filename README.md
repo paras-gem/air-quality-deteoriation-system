@@ -41,7 +41,11 @@ The project will use publicly available air quality datasets containing pollutio
 The system will predict the air quality level and identify potential deterioration based on environmental conditions.
 
 ## Team Members
-(Add team member names here)
+  1. Pratham Gupta
+  2. Devansh Behal
+  3. Tushti Wadhwa
+  4. Harshdeep Singh
+  5. Paras Kumar
 
 ## Version Control
 The project is managed using GitHub. All team members will contribute by committing their work regularly.
