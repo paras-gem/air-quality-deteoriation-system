@@ -22,9 +22,8 @@ Air pollution has become a major environmental concern in many cities. By analyz
 
 ## Machine Learning Algorithms
 The following algorithms will be explored in this project:
-- Decision Tree
-- K-Nearest Neighbors (KNN)
-- Neural Networks
+- Random Forest
+  
 
 ## Dataset
 The project will use publicly available air quality datasets containing pollution indicators such as:
