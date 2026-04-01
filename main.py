@@ -1,34 +1,55 @@
 import logging
-import asyncio
+import os
+import pandas as pd
+from datetime import datetime, timedelta
+from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import pandas as pd
-import uvicorn
+from pydantic import BaseModel, Field
+
 from model_manager import load_models
-from surroundings import get_surroundings_data, get_nearest_city, CITIES
 
 # Configure Logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AIRQ Prediction API", version="2.0.0")
+app = FastAPI(title="AIRQ Prediction API", description="FastAPI Migration for AQI Deteoriation System")
 
-# CORS Configuration
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Load Models
-rf_1h, rf_24h, metadata = load_models()
-FEATURES = metadata['features']
+try:
+    rf_1h, rf_24h, metadata = load_models()
+    FEATURES = metadata['features']
+    CITIES_SUPPORTED = metadata['cities']
+    IS_DUMMY = metadata.get('is_dummy', False)
+    logger.info(f"Loaded {'DUMMY ' if IS_DUMMY else ''}Random Forest models successfully!")
+except Exception as e:
+    logger.error(f"Failed to load models: {e}")
+    # Fallback to local paths if needed or re-raise
+    raise e
+
+# Load Dataset for Historical Data
+try:
+    CSV_PATH = os.path.join(os.path.dirname(__file__), 'india_aqi_v6_2024-2025.csv')
+    df = pd.read_csv(CSV_PATH)
+    # Convert datetime for filtering
+    df['datetime_dt'] = pd.to_datetime(df['datetime'], errors='coerce')
+    logger.info("Successfully loaded historical dataset.")
+except Exception as e:
+    logger.error(f"Failed to load dataset: {e}")
+    df = pd.DataFrame()
+
+# --- Pydantic Models ---
 
 class PredictionRequest(BaseModel):
-    city: str
+    city: str = Field(..., example="Delhi")
     currentAqi: float
     aqi1h: float
     aqi24h: float
@@ -38,121 +59,170 @@ class PredictionRequest(BaseModel):
     hour: int
     month: int
 
-class GeolocationRequest(BaseModel):
-    lat: float
-    lon: float
+class DataPoint(BaseModel):
+    time: str
+    aqi: float
+    isPredicted: bool
 
-def run_prediction(data_dict: dict, city_name: str):
-    """Core prediction logic helper."""
-    # Construct dataframe matching trained features
-    # Note: features list looks like ['AQI', 'Temperature_C', 'Precipitation_mm', 'WindSpeed_kmh', 'hour', 'month', 'AQI_lag1', 'AQI_lag24', 'city_Delhi', ...]
-    input_data = {
-        'AQI':              [data_dict['currentAqi']],
-        'Temperature_C':    [data_dict['temperature']],
-        'Precipitation_mm': [data_dict['precipitation']],
-        'WindSpeed_kmh':    [data_dict['windSpeed']],
-        'hour':             [data_dict['hour']],
-        'month':            [data_dict['month']],
-        'AQI_lag1':         [data_dict['aqi1h']],
-        'AQI_lag24':        [data_dict['aqi24h']],
-        'city_Delhi':       [1 if city_name == 'Delhi' else 0],
-        'city_Hyderabad':   [1 if city_name == 'Hyderabad' else 0],
-        'city_Kolkata':     [1 if city_name == 'Kolkata' else 0],
-        'city_Mumbai':      [1 if city_name == 'Mumbai' else 0],
-    }
-    
-    input_df = pd.DataFrame(input_data)[FEATURES]
-    
-    pred_1h = round(float(rf_1h.predict(input_df)[0]), 1)
-    pred_24h = round(float(rf_24h.predict(input_df)[0]), 1)
-    
-    return pred_1h, pred_24h
+class ForecastResponse(BaseModel):
+    city: str
+    data: List[DataPoint]
 
-@app.post("/predict")
-async def predict_aqi(req: PredictionRequest):
-    try:
-        p1, p24 = run_prediction(req.dict(), req.city)
-        return {
-            "city": req.city,
-            "oneHour": p1,
-            "twentyFourHour": p24,
-            "accuracy_1h": metadata.get('accuracy_1h', 0.85),
-            "accuracy_24h": metadata.get('accuracy_24h', 0.80)
-        }
-    except Exception as e:
-        logger.error(f"Prediction Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# --- Helper Functions ---
 
-@app.post("/detect-surroundings")
-async def detect_surroundings(req: GeolocationRequest):
-    """Fetches real data and runs prediction instantly for one set of coordinates."""
-    try:
-        raw_data = await get_surroundings_data(req.lat, req.lon)
-        city_name = get_nearest_city(req.lat, req.lon)
-        
-        from datetime import datetime
-        now = datetime.now()
-        
-        pred_input = {
-            "currentAqi": raw_data['current_aqi'],
-            "aqi1h": raw_data['aqi_1h'],
-            "aqi24h": raw_data['aqi_24h'],
-            "temperature": raw_data['temperature'],
-            "precipitation": raw_data['precipitation'],
-            "windSpeed": raw_data['wind_speed'],
-            "hour": now.hour,
-            "month": now.month
-        }
-        
-        p1, p24 = run_prediction(pred_input, city_name)
-        
-        return {
-            "location": raw_data['city_guess'],
-            "nearest_model_city": city_name,
-            "raw_sensors": raw_data,
-            "predictions": {"oneHour": p1, "twentyFourHour": p24}
-        }
-    except Exception as e:
-        logger.error(f"Detection Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+def get_aqi_category(aqi: float) -> str:
+    if aqi <= 50:    return "Good"
+    elif aqi <= 100: return "Satisfactory"
+    elif aqi <= 200: return "Moderate"
+    elif aqi <= 300: return "Poor"
+    elif aqi <= 400: return "Very Poor"
+    else:            return "Severe"
 
-@app.get("/multi-predict")
-async def multi_predict():
-    """Returns predictions for all 4 cities for the home page table."""
-    results = []
-    from datetime import datetime
-    now = datetime.now()
-    
-    for city_name, coords in CITIES.items():
-        try:
-            # We fetch mock/live data for each city
-            raw_data = await get_surroundings_data(coords['lat'], coords['lon'])
-            
-            pred_input = {
-                "currentAqi": raw_data['current_aqi'],
-                "aqi1h": raw_data['aqi_1h'],
-                "aqi24h": raw_data['aqi_24h'],
-                "temperature": raw_data['temperature'],
-                "precipitation": raw_data['precipitation'],
-                "windSpeed": raw_data['wind_speed'],
-                "hour": now.hour,
-                "month": now.month
-            }
-            
-            p1, p24 = run_prediction(pred_input, city_name)
-            results.append({
-                "city": city_name,
-                "oneHour": p1,
-                "twentyFourHour": p24
-            })
-        except Exception as e:
-            logger.warning(f"Failed city {city_name}: {e}")
-            
-    return results
+# --- API Routes ---
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "fastapi": True, "is_dummy": metadata.get('is_dummy', False)}
+async def health():
+    return {
+        "status": "ok",
+        "models_loaded": True,
+        "is_dummy_model": IS_DUMMY,
+        "cities": CITIES_SUPPORTED
+    }
+
+@app.post("/predict")
+async def predict(req: PredictionRequest):
+    try:
+        # Construct dataframe dynamically matching trained features
+        input_data = {
+            'AQI':              [req.currentAqi],
+            'Temperature_C':    [req.temperature],
+            'Precipitation_mm': [req.precipitation],
+            'WindSpeed_kmh':    [req.windSpeed],
+            'hour':             [req.hour],
+            'month':            [req.month],
+            'AQI_lag1':         [req.aqi1h],
+            'AQI_lag24':        [req.aqi24h],
+            'city_Delhi':       [1 if req.city == 'Delhi' else 0],
+            'city_Hyderabad':   [1 if req.city == 'Hyderabad' else 0],
+            'city_Kolkata':     [1 if req.city == 'Kolkata' else 0],
+            'city_Mumbai':      [1 if req.city == 'Mumbai' else 0],
+        }
+
+        # Check if city is one of the supported columns, if not, handle it
+        # The trained model might only have 4 city columns. 
+        # If city not in [Delhi, Hyderabad, Kolkata, Mumbai], all stay 0.
+
+        input_df = pd.DataFrame(input_data)[FEATURES]
+
+        pred_1h = round(float(rf_1h.predict(input_df)[0]), 1)
+        pred_24h = round(float(rf_24h.predict(input_df)[0]), 1)
+
+        return {
+            'city': req.city,
+            'oneHour': pred_1h,
+            'twentyFourHour': pred_24h,
+            'category_1h': get_aqi_category(pred_1h),
+            'category_24h': get_aqi_category(pred_24h),
+            'model_accuracy_1h': metadata.get('accuracy_1h', 0),
+            'model_accuracy_24h': metadata.get('accuracy_24h', 0),
+            'is_dummy_model': IS_DUMMY
+        }
+    except Exception as e:
+        logger.exception("Error during prediction")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/forecast", response_model=ForecastResponse)
+async def forecast(city: str = "Delhi"):
+    """
+    Returns 6 hours of historical data and 24 hours of prediction
+    """
+    try:
+        if df.empty:
+            raise HTTPException(status_code=503, detail="Dataset not available for historical data")
+
+        # Get the latest data for the city from the CSV
+        city_data = df[df['city'] == city].sort_values(by='datetime_dt', ascending=False)
+        if city_data.empty:
+            raise HTTPException(status_code=404, detail=f"No data found for city: {city}")
+
+        # Simulate "Current" as the latest record in the dataset for that city
+        latest_row = city_data.iloc[0]
+        
+        # Get last 6 hours of history
+        history_rows = city_data.iloc[1:7][::-1] # 6 points prior
+        
+        data_points = []
+        
+        # Add history
+        for idx, h_row in history_rows.iterrows():
+            data_points.append(DataPoint(
+                time=(h_row['datetime_dt']).strftime("%H:%M"),
+                aqi=float(h_row['AQI']),
+                isPredicted=False
+            ))
+            
+        # Add "Current"
+        data_points.append(DataPoint(
+            time=latest_row['datetime_dt'].strftime("%H:%M"),
+            aqi=float(latest_row['AQI']),
+            isPredicted=False
+        ))
+
+        # --- Generate Predictions for next 24 hours ---
+        # We'll use the model to predict next steps. 
+        # For a trend, we'll build on the prediction or simulate 24-hr points.
+        # Since r1_1h predicts 1h ahead and r1_24 predicts 24h ahead, we have two anchor points.
+        
+        # Point 1 (Current AQI): already added
+        
+        # Mock inputs for the model (simplified for the trend)
+        def predict_point(current_aqi, h_ago, d_ago, hr, mon):
+            # Same features as /predict
+            input_dict = {
+                'AQI': [current_aqi], 'Temperature_C': [latest_row['Temperature_C']], 
+                'Precipitation_mm': [latest_row['Precipitation_mm']], 'WindSpeed_kmh': [latest_row['WindSpeed_kmh']],
+                'hour': [hr], 'month': [mon], 'AQI_lag1': [h_ago], 'AQI_lag24': [d_ago],
+                'city_Delhi': [1 if city == 'Delhi' else 0], 'city_Hyderabad': [1 if city == 'Hyderabad' else 0],
+                'city_Kolkata': [1 if city == 'Kolkata' else 0], 'city_Mumbai': [1 if city == 'Mumbai' else 0],
+            }
+            idf = pd.DataFrame(input_dict)[FEATURES]
+            p1 = rf_1h.predict(idf)[0]
+            p24 = rf_24h.predict(idf)[0]
+            return p1, p24
+
+        curr_aqi = latest_row['AQI']
+        p1, p24 = predict_point(curr_aqi, latest_row['AQI'], curr_aqi, latest_row['hour'], latest_row['month'])
+        
+        # Generate 24 points (every hour) by interpolating between p1 and p24 for visual smoothness
+        # or just show specific markers. Let's do every 3 hours for 24 hours for a good curve.
+        base_time = latest_row['datetime_dt']
+        
+        # Add 1H prediction
+        data_points.append(DataPoint(
+            time=(base_time + timedelta(hours=1)).strftime("%H:%M"),
+            aqi=round(float(p1), 1),
+            isPredicted=True
+        ))
+        
+        # Simple interpolation for the trend
+        for h in range(4, 25, 4):
+            # weighted interpolation between p1 and p24
+            # h=1 -> p1, h=24 -> p24
+            ratio = (h - 1) / 23
+            interpolated_aqi = p1 + (p24 - p1) * ratio
+            
+            data_points.append(DataPoint(
+                time=(base_time + timedelta(hours=h)).strftime("%H:%M"),
+                aqi=round(float(interpolated_aqi), 1),
+                isPredicted=True
+            ))
+
+        return ForecastResponse(city=city, data=data_points)
+
+    except Exception as e:
+        logger.exception("Error during forecast generation")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

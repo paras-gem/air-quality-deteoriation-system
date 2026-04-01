@@ -14,6 +14,7 @@ import {
   Scatter,
   Cell,
 } from "recharts";
+import PredictionTrendChart from "./PredictionTrendChart";
 
 const cities = [
   { name: "Delhi", aqi: 178, level: "Poor" },
@@ -239,6 +240,8 @@ export default function HomeSection() {
 
       {/* Analytics Appended Content (Previously Dashboard) */}
       <div id="analytics" className="home-analytics">
+        <PredictionTrendChart />
+
         <div className="home-section-header">
           <p className="home-section-eyebrow">Analytics Hub</p>
           <h2 className="home-section-title">
