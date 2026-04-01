@@ -1,6 +1,6 @@
 
 import { useEffect, useRef } from "react";
-import { AlertCircle, Lightbulb, Github, Linkedin, Code2, Cpu, FileCode, Database, Layers } from "lucide-react";
+import { AlertCircle, Lightbulb, Code2, Cpu, FileCode, Database, Layers } from "lucide-react";
 
 const techStack = [
   { icon: Code2, name: "React", desc: "Frontend UI framework", color: "#22D3EE" },
@@ -191,7 +191,7 @@ export default function AboutSection() {
         </div>
       </section>
 
-      {/* Developer Credits */}
+      {/* Team Credits */}
       <section id="credits" className="about-section">
         <div ref={creditsRef} className="section-fade about-credits-container">
           {/* Liquid Glass Header */}
@@ -200,59 +200,89 @@ export default function AboutSection() {
             <div className="about-header-glow-2" style={{ top: "50%", right: "0", transform: "translate(50%, -50%)" }}></div>
 
             <div className="about-header-content">
-              <p className="about-eyebrow">Credits</p>
+              <p className="about-eyebrow">The Team</p>
               <h2 className="about-title">
-                Developer <span>Credits</span>
+                Project <span>Contributors</span>
               </h2>
             </div>
           </div>
 
-          <div className="depth-card about-card">
-            {/* Avatar */}
-            <div className="about-avatar">
-              <span>P</span>
+          <div className="about-grid" style={{ marginTop: "2rem" }}>
+            {/* Pratham Gupta */}
+            <div className="depth-card about-card" style={{ padding: "1.5rem" }}>
+              <div className="about-card-title-wrap" style={{ marginBottom: "1rem" }}>
+                <div className="about-card-icon-box" style={{ backgroundColor: "rgba(52, 211, 153, 0.1)", borderColor: "rgba(52, 211, 153, 0.2)" }}>
+                  <Cpu className="w-5 h-5" style={{ color: "#34D399" }} />
+                </div>
+                <div>
+                  <h3 className="about-card-title" style={{ fontSize: "1.1rem", marginBottom: "0.2rem" }}>Pratham Gupta</h3>
+                  <p style={{ color: "var(--color-gray-400)", fontSize: "0.85rem", margin: 0 }}>Model Training & Testing</p>
+                </div>
+              </div>
+              <div className="about-card-body">
+                <p style={{ fontSize: "0.9rem" }}>
+                  Led the machine learning efforts, including the development, training, and rigorous testing of the core Random Forest prediction model.
+                </p>
+              </div>
             </div>
 
-            <h3 className="about-dev-name">Pratham</h3>
-            <p className="about-dev-role">Full-Stack Developer & ML Engineer</p>
-            <p className="about-dev-edu">BCA Student · Christ University, Bangalore</p>
-            <p className="about-dev-desc" style={{ marginBottom: "1.5rem" }}>
-              Developed and trained the AirQ prediction system as part of academic research into
-              environmental machine learning and real-time data applications.
-            </p>
+            {/* Harsdeep Singh */}
+            <div className="depth-card about-card" style={{ padding: "1.5rem" }}>
+              <div className="about-card-title-wrap" style={{ marginBottom: "1rem" }}>
+                <div className="about-card-icon-box" style={{ backgroundColor: "rgba(96, 165, 250, 0.1)", borderColor: "rgba(96, 165, 250, 0.2)" }}>
+                  <Database className="w-5 h-5" style={{ color: "#60A5FA" }} />
+                </div>
+                <div>
+                  <h3 className="about-card-title" style={{ fontSize: "1.1rem", marginBottom: "0.2rem" }}>Harsdeep Singh</h3>
+                  <p style={{ color: "var(--color-gray-400)", fontSize: "0.85rem", margin: 0 }}>Data & Feature Engineering</p>
+                </div>
+              </div>
+              <div className="about-card-body">
+                <p style={{ fontSize: "0.9rem" }}>
+                  Managed dataset loading, comprehensive preprocessing, and engineered critical features vital for accurate air quality forecasting.
+                </p>
+              </div>
+            </div>
 
-            <p className="about-dev-desc" style={{ marginBottom: "1.5rem" }}>
-              This project combines data science, meteorological modeling, and modern web development
-              to address one of India&apos;s most pressing public health challenges. AirQ was designed,
-              built, and trained entirely by Pratham — from feature engineering and model evaluation
-              in Python to the full React/Tailwind frontend.
-            </p>
+            {/* Paras Kumar */}
+            <div className="depth-card about-card" style={{ padding: "1.5rem" }}>
+              <div className="about-card-title-wrap" style={{ marginBottom: "1rem" }}>
+                <div className="about-card-icon-box" style={{ backgroundColor: "rgba(250, 204, 21, 0.1)", borderColor: "rgba(250, 204, 21, 0.2)" }}>
+                  <FileCode className="w-5 h-5" style={{ color: "#FACC15" }} />
+                </div>
+                <div>
+                  <h3 className="about-card-title" style={{ fontSize: "1.1rem", marginBottom: "0.2rem" }}>Paras Kumar</h3>
+                  <p style={{ color: "var(--color-gray-400)", fontSize: "0.85rem", margin: 0 }}>Backend & API Development</p>
+                </div>
+              </div>
+              <div className="about-card-body">
+                <p style={{ fontSize: "0.9rem" }}>
+                  Built the centralized Flask backend and robust REST API endpoints to seamlessly bridge the machine learning model with the frontend interface.
+                </p>
+              </div>
+            </div>
 
-            {/* Links */}
-            <div className="about-links">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="about-btn-gh"
-              >
-                <Github className="w-4 h-4" />
-                GitHub
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="about-btn-in"
-              >
-                <Linkedin className="w-4 h-4" />
-                LinkedIn
-              </a>
+            {/* Tushti & Devansh */}
+            <div className="depth-card about-card" style={{ padding: "1.5rem" }}>
+              <div className="about-card-title-wrap" style={{ marginBottom: "1rem" }}>
+                <div className="about-card-icon-box" style={{ backgroundColor: "rgba(34, 211, 238, 0.1)", borderColor: "rgba(34, 211, 238, 0.2)" }}>
+                  <Code2 className="w-5 h-5" style={{ color: "#22D3EE" }} />
+                </div>
+                <div>
+                  <h3 className="about-card-title" style={{ fontSize: "1.1rem", marginBottom: "0.2rem" }}>Tushti & Devansh</h3>
+                  <p style={{ color: "var(--color-gray-400)", fontSize: "0.85rem", margin: 0 }}>Frontend UI/UX</p>
+                </div>
+              </div>
+              <div className="about-card-body">
+                <p style={{ fontSize: "0.9rem" }}>
+                  Designed and developed the reactive, glassmorphism-inspired React frontend, ensuring an intuitive and visually engaging user experience.
+                </p>
+              </div>
             </div>
           </div>
 
-          <p className="about-techstack-footer">
-            Built with React · Vite · Recharts · CSS · Python · Scikit-Learn
+          <p className="about-techstack-footer" style={{ marginTop: "3rem" }}>
+            Built collaboratively with React · Flask · Python · Scikit-Learn
           </p>
         </div>
       </section>
