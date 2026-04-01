@@ -1,0 +1,3 @@
+# This file exists so Git tracks this empty folder.
+# The .pkl model files (rf_1h_model.pkl, rf_24h_model.pkl) 
+# and metadata.json will be generated here when you run aqi predictor.py

@@ -1,0 +1,24 @@
+{
+    "features": [
+        "AQI",
+        "Temperature_C",
+        "Precipitation_mm",
+        "WindSpeed_kmh",
+        "hour",
+        "month",
+        "AQI_lag1",
+        "AQI_lag24",
+        "city_Delhi",
+        "city_Hyderabad",
+        "city_Kolkata",
+        "city_Mumbai"
+    ],
+    "cities": [
+        "Delhi",
+        "Hyderabad",
+        "Kolkata",
+        "Mumbai"
+    ],
+    "accuracy_1h": 0.9678946111802468,
+    "accuracy_24h": 0.8136688605204301
+}
